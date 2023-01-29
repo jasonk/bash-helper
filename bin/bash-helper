@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# https://github.com/jasonk/bash-helper
+
+BASH_HELPER_VERSION="v0.0.0"
+BASH_HELPER_SELF="$(realpath -Pe "${BASH_SOURCE[0]}")"
+BASH_HELPER_BIN="$(dirname "$BASH_HELPER_SELF")"
+BASH_HELPER_DIR="$(dirname "$BASH_HELPER_BIN")"
+BASH_HELPER_LIB="$BASH_HELPER_DIR/lib"
+
+# export PATH="$BASH_HELPER_BIN:$PATH"
+export BASH_HELPER_VERSION BASH_HELPER_SELF
+export BASH_HELPER_BIN BASH_HELPER_DIR BASH_HELPER_LIB
+
+# If this script was sourced instead of executed then we have some
+# special handling...
+if ( return 0 2>/dev/null ); then
+  # If we're being sourced from within a `.envrc` then we'll use it's
+  # tooling to setup the environment, otherwise we just stuff it in
+  # the front of $PATH
+  if [ -n "${DIRENV_IN_ENVRC:-}" ]; then
+    PATH_add "$BASH_HELPER_BIN"
+  else
+    export PATH="$BASH_HELPER_BIN:$PATH"
+  fi
+  # If we're being sourced from within a BATS test then we load our
+  # bats-setup.sh file too
+  if [ -n "$BATS_TEST_FILENAME" ]; then
+    # shellcheck disable=SC1091
+    source "$BASH_HELPER_LIB/bats-setup.bash"
+  fi
+  return
+fi
+
+if (( $# )); then
+  for I in "$@"; do
+    case "$I" in
+      --version) echo "$BASH_HELPER_VERSION" ; exit ;;
+    esac
+  done
+  if [ -x "$BASH_HELPER_LIB/$1.sh" ]; then
+    CMD="$BASH_HELPER_LIB/$1.sh" ; shift 1
+    exec "$CMD" "$@"
+  fi
+fi
+cat <<'END' 1>&2
+Usage: bash-helper [options] [message]
+
+Try 'bash-helper --help' for more details.
+END
+exit 1
